@@ -86,7 +86,7 @@
 ### 1. Ingest Flow (Chat → Ledger)
 
 ```
-User Input: "Amanda comprou 2 camisetas"
+User Input: "Amanda comprou 2 camisetas" (PT: "Amanda bought 2 shirts")
     │
     ▼
 [BusinessLanguageDetector]
@@ -128,7 +128,7 @@ LedgerReceipt
 ### 2. Query Flow (Query → Results)
 
 ```
-User Input: "Amanda Barros"
+User Input: "[Customer Name]" (e.g., "Amanda Barros")
     │
     ▼
 [QueryEngine.purchasesFor()]
@@ -143,7 +143,7 @@ User Input: "Amanda Barros"
     │
     ├─→ SQL: SELECT COUNT(*), SUM(value)
     │        FROM events
-    │        WHERE entity_name = 'Amanda Barros'
+    │        WHERE entity_name = ?  -- parameterized
     │        AND ts BETWEEN start AND end
     │        AND action IN ('sale', 'payment')
     │

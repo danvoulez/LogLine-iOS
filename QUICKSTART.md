@@ -18,8 +18,7 @@ LogLineOS is a production-ready iOS app that turns natural language business con
 
 2. **Quick Setup**
    ```bash
-   # Clone the repository
-   git clone https://github.com/danvoulez/LogLine-iOS.git
+   # Navigate to the cloned repository
    cd LogLine-iOS
    
    # Read the instructions
