@@ -1,0 +1,46 @@
+# Xcode
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+*.xcworkspace/*
+!*.xcworkspace/contents.xcworkspacedata
+!*.xcworkspace/xcshareddata/
+xcuserdata/
+*.xccheckout
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Carthage
+Carthage/Build/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Secrets
+**/Secrets.plist
+!LogLineOS/Config/Secrets.plist
+
+# macOS
+.DS_Store
+
+# Build
+build/
+
+# SQLite
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Ledger data (optional - uncomment if you don't want to commit local ledger data)
+# ledger/
+# *.ndjson
+# *.manifest.json
