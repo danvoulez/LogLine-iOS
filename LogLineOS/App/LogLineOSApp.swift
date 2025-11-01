@@ -27,6 +27,8 @@ private struct RootTabView: View {
                 .tabItem { Label("Queries", systemImage: "magnifyingglass") }
             LedgerView(env: env)
                 .tabItem { Label("Ledger", systemImage: "list.bullet.rectangle") }
+            SettingsView()
+                .tabItem { Label("Settings", systemImage: "gear") }
         }
     }
 }

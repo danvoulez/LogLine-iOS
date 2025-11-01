@@ -129,6 +129,135 @@ final class LedgerIndexSQLite {
     
     // MARK: - Internals
     
+    func allEventsForEntity(named name: String) async throws -> [IndexedEvent] {
+        try await withCheckedThrowingContinuation { cont in
+            queue.async {
+                var rows: [IndexedEvent] = []
+                do {
+                    let sql = "SELECT id, ts, day, entity_name, action, subject, value, currency, payment FROM events WHERE entity_name = ? ORDER BY ts DESC;"
+                    var stmt: OpaquePointer?
+                    defer { sqlite3_finalize(stmt) }
+                    guard sqlite3_prepare_v2(self.db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                        throw NSError(domain: "sqlite", code: 2)
+                    }
+                    sqlite3_bind_text(stmt, 1, (name as NSString).utf8String, -1, SQLITE_TRANSIENT)
+                    while sqlite3_step(stmt) == SQLITE_ROW {
+                        let event = self.parseEventRow(stmt: stmt)
+                        rows.append(event)
+                    }
+                    cont.resume(returning: rows)
+                } catch {
+                    cont.resume(throwing: error)
+                }
+            }
+        }
+    }
+    
+    func allEntityNames() async throws -> [String] {
+        try await withCheckedThrowingContinuation { cont in
+            queue.async {
+                var names: [String] = []
+                do {
+                    let sql = "SELECT DISTINCT entity_name FROM events WHERE entity_name IS NOT NULL ORDER BY entity_name;"
+                    var stmt: OpaquePointer?
+                    defer { sqlite3_finalize(stmt) }
+                    guard sqlite3_prepare_v2(self.db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                        throw NSError(domain: "sqlite", code: 2)
+                    }
+                    while sqlite3_step(stmt) == SQLITE_ROW {
+                        if let name = sqlite3_column_text(stmt, 0).flatMap({ String(cString: $0) }) {
+                            names.append(name)
+                        }
+                    }
+                    cont.resume(returning: names)
+                } catch {
+                    cont.resume(throwing: error)
+                }
+            }
+        }
+    }
+    
+    func searchEvents(query: String) async throws -> [IndexedEvent] {
+        try await withCheckedThrowingContinuation { cont in
+            queue.async {
+                var rows: [IndexedEvent] = []
+                do {
+                    let sql = """
+                    SELECT id, ts, day, entity_name, action, subject, value, currency, payment 
+                    FROM events 
+                    WHERE entity_name LIKE ? OR subject LIKE ? OR action LIKE ? 
+                    ORDER BY ts DESC 
+                    LIMIT 100;
+                    """
+                    var stmt: OpaquePointer?
+                    defer { sqlite3_finalize(stmt) }
+                    guard sqlite3_prepare_v2(self.db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                        throw NSError(domain: "sqlite", code: 2)
+                    }
+                    let searchPattern = "%\(query)%"
+                    sqlite3_bind_text(stmt, 1, (searchPattern as NSString).utf8String, -1, SQLITE_TRANSIENT)
+                    sqlite3_bind_text(stmt, 2, (searchPattern as NSString).utf8String, -1, SQLITE_TRANSIENT)
+                    sqlite3_bind_text(stmt, 3, (searchPattern as NSString).utf8String, -1, SQLITE_TRANSIENT)
+                    while sqlite3_step(stmt) == SQLITE_ROW {
+                        let event = self.parseEventRow(stmt: stmt)
+                        rows.append(event)
+                    }
+                    cont.resume(returning: rows)
+                } catch {
+                    cont.resume(throwing: error)
+                }
+            }
+        }
+    }
+    
+    func eventsInDateRange(start: Date, end: Date) async throws -> [IndexedEvent] {
+        try await withCheckedThrowingContinuation { cont in
+            queue.async {
+                var rows: [IndexedEvent] = []
+                do {
+                    let sql = "SELECT id, ts, day, entity_name, action, subject, value, currency, payment FROM events WHERE ts BETWEEN ? AND ? ORDER BY ts DESC;"
+                    var stmt: OpaquePointer?
+                    defer { sqlite3_finalize(stmt) }
+                    guard sqlite3_prepare_v2(self.db, sql, -1, &stmt, nil) == SQLITE_OK else {
+                        throw NSError(domain: "sqlite", code: 2)
+                    }
+                    sqlite3_bind_double(stmt, 1, start.timeIntervalSince1970)
+                    sqlite3_bind_double(stmt, 2, end.timeIntervalSince1970)
+                    while sqlite3_step(stmt) == SQLITE_ROW {
+                        let event = self.parseEventRow(stmt: stmt)
+                        rows.append(event)
+                    }
+                    cont.resume(returning: rows)
+                } catch {
+                    cont.resume(throwing: error)
+                }
+            }
+        }
+    }
+    
+    private func parseEventRow(stmt: OpaquePointer?) -> IndexedEvent {
+        let id = String(cString: sqlite3_column_text(stmt, 0))
+        let ts = sqlite3_column_double(stmt, 1)
+        let day = String(cString: sqlite3_column_text(stmt, 2))
+        let entityName = sqlite3_column_text(stmt, 3).flatMap { String(cString: $0) }
+        let action = String(cString: sqlite3_column_text(stmt, 4))
+        let subject = String(cString: sqlite3_column_text(stmt, 5))
+        let value = sqlite3_column_type(stmt, 6) == SQLITE_NULL ? nil : sqlite3_column_double(stmt, 6)
+        let currency = sqlite3_column_text(stmt, 7).flatMap { String(cString: $0) }
+        let payment = sqlite3_column_text(stmt, 8).flatMap { String(cString: $0) }
+        return IndexedEvent(
+            id: id,
+            timestamp: Date(timeIntervalSince1970: ts),
+            day: day,
+            entityName: entityName,
+            action: action,
+            subject: subject,
+            value: value,
+            currency: currency,
+            payment: payment
+        )
+    }
+    
     private func insertEvent(id: String, ts: Date, day: String, entity: String?, action: String, subject: String, value: Double?, currency: String?, payment: String?) throws {
         let sql = "INSERT OR REPLACE INTO events (id, ts, day, entity_name, action, subject, value, currency, payment) VALUES (?,?,?,?,?,?,?,?,?);"
         var stmt: OpaquePointer?

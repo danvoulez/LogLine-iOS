@@ -80,6 +80,26 @@ actor LedgerEngine {
         return try await index.eventsFor(day: day)
     }
     
+    func allEventsForEntity(named name: String) async throws -> [IndexedEvent] {
+        try await index.ensureOpen()
+        return try await index.allEventsForEntity(named: name)
+    }
+    
+    func allEntities() async throws -> [String] {
+        try await index.ensureOpen()
+        return try await index.allEntityNames()
+    }
+    
+    func searchEvents(query: String) async throws -> [IndexedEvent] {
+        try await index.ensureOpen()
+        return try await index.searchEvents(query: query)
+    }
+    
+    func eventsInDateRange(from start: Date, to end: Date) async throws -> [IndexedEvent] {
+        try await index.ensureOpen()
+        return try await index.eventsInDateRange(start: start, end: end)
+    }
+    
     // MARK: Internals
     
     private func makeNDJSONLine(id: String, traceId: String, spanId: String, actor: String, canonical: Canonical, originalText: String, rowHash: Data, chainHash: Data) throws -> String {
